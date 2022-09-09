@@ -78,7 +78,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t led_user_delay_sel = 1;
-	uint32_t led_user_delay = 1000;
+	uint32_t led_user_delay = 500;
 
   /* USER CODE END 1 */
 
@@ -107,6 +107,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t ticks_delay = HAL_GetTick();
 	while (1)
 	{
 		if (led_change_flag == 1)
@@ -132,9 +133,13 @@ int main(void)
 				break;
 			}
 		}
+		if(HAL_GetTick() - ticks_delay > led_user_delay)
+		{
+		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+		  ticks_delay = HAL_GetTick();
+		}
 
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-		HAL_Delay(led_user_delay);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "fm_pgen.h"
+void fm_pgen_start(unsigned pulses, unsigned freq);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,8 +45,7 @@ TIM_HandleTypeDef htim16;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint64_t global_msc = 0;
-
+unsigned global_gen_pulses;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -93,16 +93,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim16);
-
-  unsigned TIM_FREQ = 80000000;
-  unsigned gen_freq = 150;
-  uint32_t prescaler;
-  uint32_t period;
-
-  tune_timer(gen_freq, TIM_FREQ, &prescaler, &period);
-  htim16.Init.Prescaler = prescaler - 1;
-  htim16.Init.Period = period - 1;
+  fm_pgen_start(5, 1);
 
   /* USER CODE END 2 */
 
@@ -265,6 +256,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD4_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -272,12 +267,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if(htim == &htim16)
   {
-    global_msc++;
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    if(global_gen_pulses)
+    {
+      HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+      global_gen_pulses--;
+    }
+    else
+    {
+      HAL_TIM_Base_Stop(&htim16);
+    }
+
   }
 }
 
+void fm_pgen_start(unsigned pulses, unsigned freq)
+{
+  const unsigned TIMER_FREQ = 80000000;
+  unsigned prescaler;
+  unsigned period;
 
+  global_gen_pulses = pulses * 2;
+
+  tune_timer(freq, TIMER_FREQ, &prescaler, &period);
+  htim16.Init.Period = period - 1;
+  htim16.Init.Prescaler = prescaler - 1;
+  HAL_TIM_Base_Init(&htim16);
+  HAL_TIM_Base_Start_IT(&htim16);
+}
 
 /* USER CODE END 4 */
 
